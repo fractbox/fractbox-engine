@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Fractbox Engine — live demo</title>
+    <meta
+      name="description"
+      content="A build-less, dependency-free WebGPU engine that composes fractal primitives into a distance-estimated formula and renders it live."
+    />
+    <link rel="stylesheet" href="./demo.css" />
+  </head>
+  <body>
+    <canvas id="view"></canvas>
+
+    <header id="title">
+      <h1>Fractbox <span>Engine</span></h1>
+      <p>
+        A composable, distance-estimated fractal engine — WebGPU, zero build, zero
+        dependencies. Drag to orbit · scroll to zoom.
+      </p>
+    </header>
+
+    <button id="tour-btn" class="tour-btn" hidden type="button">▶ Guided tour</button>
+
+    <nav id="presets" aria-label="Preset gallery"></nav>
+
+    <footer id="meta">
+      <a href="https://github.com/fractbox/fractbox-engine">source on GitHub →</a>
+      <span id="fps"></span>
+    </footer>
+
+    <div id="nogpu" hidden>
+      <h2>WebGPU not available</h2>
+      <p>
+        This demo needs a WebGPU-capable browser (recent Chrome, Edge, or Safari
+        Technology Preview) on a machine with a GPU. The engine itself still loads
+        as raw ES modules — only the render needs the GPU.
+      </p>
+    </div>
+
+    <script type="module" src="./demo.js"></script>
+  </body>
+</html>

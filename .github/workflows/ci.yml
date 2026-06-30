@@ -1,0 +1,35 @@
+name: CI
+
+# The defining invariant: core/ must load and run as raw ES modules with NO
+# build step and NO dependencies. This gate proves it on every push/PR.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  no-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+
+      - name: Syntax-check ES modules (no build)
+        run: |
+          find core -name '*.js' -print0 | xargs -0 -r -n1 node --check
+
+      - name: No-build import smoke
+        run: |
+          node -e "import('./core/operators.js').then(m=>{if(!m.OPERATORS||!m.OPERATORS.length)process.exit(1);console.log('core import OK: '+m.OPERATORS.length+' operators')}).catch(e=>{console.error(e);process.exit(1)})"
+          node -e "import('./core/oplist.js').then(m=>{if(!m.PRESETS||!m.PRESETS.length)process.exit(1);console.log('presets OK: '+m.PRESETS.length)}).catch(e=>{console.error(e);process.exit(1)})"
+
+      - name: Engine emits GLSL for every preset
+        run: |
+          node -e "Promise.all([import('./core/exporter.js'),import('./core/oplist.js')]).then(([ex,ol])=>{for(const p of ol.PRESETS){const g=ex.glslFor(p);if(!g||g.length<50)throw new Error('empty GLSL for '+p.name)}console.log('GLSL export OK for '+ol.PRESETS.length+' presets')}).catch(e=>{console.error(e);process.exit(1)})"

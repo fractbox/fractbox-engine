@@ -1,0 +1,265 @@
+/* Fractbox Engine demo — minimal chrome, the render is the star. */
+:root {
+  color-scheme: dark;
+  --fg: #e8eaf0;
+  --dim: #9aa3b2;
+  --accent: #6fd0e0;
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #0a0c12;
+  color: var(--fg);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+#view {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none; /* let the engine handle orbit/pinch */
+}
+
+#title {
+  position: fixed;
+  top: max(18px, env(safe-area-inset-top));
+  left: 20px;
+  max-width: 30ch;
+  pointer-events: none;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.7);
+}
+#title h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+#title h1 span {
+  color: var(--accent);
+  font-weight: 300;
+}
+#title p {
+  margin: 6px 0 0;
+  color: var(--dim);
+  font-size: 13px;
+}
+
+#presets {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: max(16px, env(safe-area-inset-bottom));
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  max-width: calc(100vw - 24px);
+  overflow-x: auto;
+  scrollbar-width: thin;
+  background: rgba(10, 12, 18, 0.55);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+.thumb {
+  flex: 0 0 auto;
+  width: 84px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: #111722;
+  color: var(--dim);
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    border-color 0.15s,
+    transform 0.1s;
+}
+.thumb:hover {
+  border-color: rgba(255, 255, 255, 0.35);
+  transform: translateY(-2px);
+}
+.thumb[aria-current="true"] {
+  border-color: var(--accent);
+  color: var(--fg);
+}
+.thumb img {
+  display: block;
+  width: 100%;
+  height: 56px;
+  object-fit: cover;
+  background: #0a0c12;
+}
+.thumb .lbl {
+  padding: 4px 2px;
+  font-size: 11px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#meta {
+  position: fixed;
+  top: max(18px, env(safe-area-inset-top));
+  right: 20px;
+  text-align: right;
+  font-size: 13px;
+}
+#meta a {
+  color: var(--accent);
+  text-decoration: none;
+}
+#meta a:hover {
+  text-decoration: underline;
+}
+#fps {
+  display: block;
+  margin-top: 4px;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Guided-tour launch button (top-left, under the title) */
+.tour-btn {
+  position: fixed;
+  top: 118px;
+  left: 20px;
+  z-index: 5;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--accent);
+  background: rgba(111, 208, 224, 0.12);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+.tour-btn:hover {
+  background: rgba(111, 208, 224, 0.22);
+}
+
+/* Guided-tour step card (bottom-left, clear of the preset strip) */
+#tour {
+  position: fixed;
+  left: 20px;
+  bottom: 150px;
+  z-index: 6;
+  width: min(380px, calc(100vw - 40px));
+  padding: 16px 18px;
+  background: rgba(10, 12, 18, 0.82);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+}
+#tour[hidden] {
+  display: none;
+}
+.tour-dots {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.tour-dot {
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+}
+.tour-dot[aria-current="true"] {
+  background: var(--accent);
+}
+.tour-title {
+  margin: 0 0 6px;
+  font-size: 16px;
+  color: var(--fg);
+}
+.tour-body {
+  margin: 0 0 14px;
+  font-size: 13.5px;
+  color: var(--dim);
+  line-height: 1.55;
+}
+.tour-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tour-spacer {
+  flex: 1;
+}
+.tour-nav button {
+  padding: 7px 13px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--fg);
+  font-size: 13px;
+  cursor: pointer;
+}
+.tour-nav button:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.35);
+}
+.tour-skip {
+  color: var(--dim) !important;
+}
+.tour-next {
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+  background: rgba(111, 208, 224, 0.12) !important;
+}
+.tour-nav button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+#nogpu {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  padding: 24px;
+  max-width: 44ch;
+  margin: auto;
+}
+/* The `hidden` attribute must win over the ID rule above (ID specificity would
+   otherwise keep `display: grid`, leaving the overlay permanently visible on
+   top of a perfectly good render). */
+#nogpu[hidden] {
+  display: none;
+}
+#nogpu h2 {
+  color: var(--accent);
+}
+#nogpu p {
+  color: var(--dim);
+}
+#nogpu .why {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 13px;
+  text-align: left;
+}
+
+@media (max-width: 560px) {
+  #title {
+    max-width: 22ch;
+  }
+  #title h1 {
+    font-size: 21px;
+  }
+}
