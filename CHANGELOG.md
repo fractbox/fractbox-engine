@@ -1,0 +1,160 @@
+# Changelog
+
+All notable changes to the **Fractbox Engine** are documented here. The engine
+is versioned [semver](https://semver.org)-style; the canonical version lives in
+[`core/version.js`](core/version.js).
+
+- **MAJOR** — breaking change to the op-list JSON, operator keys, or public API
+- **MINOR** — new operators or render backends, backward-compatible
+- **PATCH** — render-correctness / bug fixes, no API change
+
+This is a one-way mirror; entries track the engine surface (`core/` + demo), not
+the private app that builds on it.
+
+## 0.4.0 — 2026-07-06
+
+### Added
+
+- **Nine new operators** (`core/operators.js`), all backward-compatible —
+  operator count is now **41** (was 32):
+  - `varyScale` — radial-power sphere fold (Amazing-Surf-style scale variation).
+  - `bristorBrot` — Bristorbrot triplex square, the first **numeric-DE** map.
+  - `newtonTri2` / `newtonTri3` — Newton triplex z² / z³ iterations.
+  - `msltoeSym3` — Msltoe Sym z² symmetric bulb (with a sign-rule variant param).
+  - `sphericalTwoStage` — two-angle spherical bulb power.
+  - `boxBulb` — box-fold-flavored bulb power.
+  - `slonoBrot2` — SlonoBrot triplex map.
+  - `scaleDrift` — per-iteration drifting scale (Amazing Surf `Scale_vary`).
+- **Numeric finite-difference DE path** — escape-time maps with no analytic
+  derivative (the triplex `bulb_numeric` family above) get their distance
+  estimate from a finite-difference gradient instead of a tracked `w`.
+  `operators.js` exports `isNumericDE(formula)` and `effectiveDeOption(formula)`
+  (numeric formulas resolve to `deOption 3`); `shader.js buildWGSL({numericDE})`
+  emits the finite-difference gradient only when a formula needs it. Present on
+  every backend (WebGPU / WebGL2 / CPU).
+- **Formula variation + a soundness oracle** (`core/vary.js`, new) — the engine
+  side of "Surprise / Remix": `jitterParams(formula, {spread})` nudges every op
+  within its declared operator range; `isSound(formula)` scores a candidate on
+  the CPU (via `evaluate.measure`, over a probe-region ladder) and rejects the
+  degenerate rolls that render blank (collapsed / space-filling / all-escaping
+  IFS); `soundCandidate(make, fallback)` is the generate-and-test loop.
+  `core/random.js`'s `randomFormula()` (Surprise) now draws across the full
+  operator set through this gate. **`core/evaluate.js` now ships** (it was
+  previously omitted as game-only) because the generator depends on its
+  `measure` / `surfaceLean`.
+- **Camera navigation** (`core/gestures.js`, `core/cruise.js`, both new; wired
+  through `preview.js`): cursor-anchored delta-proportional **wheel zoom**,
+  **orbit inertia** (flick to coast, exponential decay), **two-finger pan +
+  pinch-zoom** on touch, and **DE-scaled cruise** — hold to fly into the
+  fractal, the step size scaling with the distance-estimate so the approach
+  never overshoots the surface.
+- **Demo: live ASCII mode.** With neither WebGPU nor WebGL2 available the demo
+  no longer dead-ends on an error card — it runs the same presets through the
+  CPU backend (`core/cpu.js`) as live, spinning, drag-orbitable colored ASCII
+  (the diagnostic note stays, as a corner card). Force it on any machine with
+  `?ascii=1`. README gains a "render fractals as text" section (node ANSI
+  one-liner + HTML embed).
+
+### Changed
+
+- **Engine core owns no DOM** (#77). `preview.js` is now a pure render
+  controller — PNG export returns a `Blob` and thumbnails render to data URLs;
+  the download `<a>` and the clickable thumbnail grid moved to
+  `core/preview-dom.js`, a thin glue layer. Callers of `exportPNG` /
+  `renderThumbnails` are unchanged.
+- Flat-formula operator cap unified to **64** on every backend for cross-tier
+  parity (`core/limits.js` single-sources the capacity caps).
+- Operator count is now **41** (was 32).
+
+## 0.3.0 — 2026-07-03
+
+### Added
+
+- **Offline frame capture** (`preview.captureFrame({w, h, quality})` →
+  `ImageBitmap`, plus `preview.setOffline(on)`): renders one frame at a chosen
+  size into an **offscreen texture** and reads it back deterministically
+  (`renderer.renderToImage`) — never the presented swap-chain canvas, whose
+  double-buffered readback alternates stale/uninitialized frames. `setOffline`
+  suspends the live pump so an offline render loop owns the device. Powers the
+  app's video/GIF export; useful for any headless frame capture.
+- **Formula morph** (`preview.setMorph(target, t, swell)` — WebGPU only):
+  blends two plain formulas' distance fields, `d = mix(dA, dB, t)` — a convex
+  blend of two 1-Lipschitz bounds is itself a valid bound, so sphere tracing
+  stays safe. Each orbit runs with its **own bailout** (sharing one overflows
+  a power-8 escape orbit's derivative in f32). `swell` is a peak mid-blend
+  dilation (still DE-safe) that counteracts level-set erosion where the two
+  fields don't overlap. Orbit-trap and escape-band coloring blend the metrics
+  of **both** formulas, so the surface pattern morphs continuously too.
+  Backends without the morph writer (WebGL2/CPU) render the current formula
+  unchanged — the fallback is structural, not policed.
+- **Coloring-mode crossfade** (`preview.setColorBlend({t, modeB, palOnB})` —
+  WebGPU only): shades under two color modes / palette toggles and mixes the
+  albedos, for callers interpolating between looks whose mode enums can't
+  lerp. Off (null) → the legacy shade path, byte-identical.
+
+### Changed
+
+- WGSL `Globals` uniform grew 320 → 384 bytes (four new vec4 words:
+  `morphB`/`morphT`/`morphX`/`colorX`). Internal layout only; all zero ⇒
+  every legacy path renders byte-identically.
+- Security/correctness hardening pass across `sanitize.js`, `sharecodec.js`,
+  `exporter.js`, `glslImport.js`, and `renderer_gl.js` (input validation and
+  bounds discipline; no API change).
+
+### Fixed
+
+- Hybrid deScale tightened for escape-slot + fold-only-slot combinations that
+  could overstep the surface (`stability.js`, with regression tests).
+
+## 0.2.1 — 2026-07-02
+
+### Fixed
+
+- Dual-set `objects` + `hybrid` formulas now dispatch **objects-first on every
+  tier**: `preview.js` `writeFrame` (feeding both GPU backends) flipped to
+  match `sanitize.js`/`cpu.js`, and `cpu.js`'s hybrid coloring branch gained
+  the same objects-first gate. Behavior change only for malformed input — the
+  op-list format forbids carrying both. An `objects: []` + `hybrid` formula no
+  longer falls through to `writeScene([])` (an uncaught throw in the render
+  loop).
+
+## 0.2.0 — 2026-06-29
+
+### Added
+
+- **Seven new operators** (`core/operators.js`), all backward-compatible:
+  - `menger` — smoothed Menger fold with signed-smoothness modes (rounded/organic edges).
+  - `polyAngleFold` — N-fold polar angle fold (symmetry / angle / mirror).
+  - `cylinderFold` — radius-bounded cylindrical fold (DE-tracked, `w ×k`).
+  - `radialInvert` — spherical inversion about a shiftable center.
+  - `bulbAxis` — Mandelbulb power around a selectable axis.
+  - `hexFold` — hexagonal plane fold.
+  - `absXYZ` — per-axis absolute-value fold (independent X/Y/Z toggles).
+- **WebGL2 renderer backend** (`renderer_gl.js` + `shader_gl.js`) — a full-parity
+  fallback below WebGPU, so the engine renders where WebGPU is unavailable.
+- **CPU / colored-ASCII renderer** (`cpu.js`) — a GPU-free last-resort backend
+  (also opt-in for testing), aligned to the GPU camera/aspect.
+- `core/version.js` — the engine version constant (this file's source of truth).
+
+### Changed
+
+- **BREAKING:** the `roundMenger` operator key was renamed to **`menger`**. Op-lists
+  that serialized `roundMenger` must be updated to `menger`. (Pre-1.0; called out
+  rather than forcing a major.)
+- Operator count is now **32** (was 25).
+
+### Fixed
+
+- **Color correctness:** albedo is now linearized from sRGB before lighting, so the
+  render matches the GUI swatches. ([#6])
+- Octahedral fold ships a working **Octahedron** preset; documented that `octaFold`
+  needs a following Scale + Translate to render. ([#7])
+- `evaluate.js` now gates the `+c` term on `addC || julia`, matching the renderer.
+
+## 0.1.0 — 2026-06-26
+
+Initial public release of the mirror: the operator-IR engine (`core/`), the
+standalone WebGPU demo, the guided tour, and the tutorial. 25 operators.
+
+[#6]: https://github.com/fractbox/fractbox-engine/issues/6
+[#7]: https://github.com/fractbox/fractbox-engine/issues/7
