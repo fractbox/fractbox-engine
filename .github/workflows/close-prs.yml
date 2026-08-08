@@ -1,0 +1,47 @@
+name: Close pull requests
+
+# This repo is a read-only mirror: changes are made in a private upstream and
+# published one-way, so a PR merged here would be overwritten on the next
+# publish. Politely close PRs and point contributors at Issues instead.
+on:
+  pull_request_target:
+    types: [opened, reopened]
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  close:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comment and close
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = [
+              "Thanks for the contribution! 🙏",
+              "",
+              "**Fractbox Engine is a read-only mirror** — the source lives in a private",
+              "upstream repository and is published here one-way, so a pull request merged",
+              "here would be overwritten on the next publish. For that reason this PR is",
+              "being closed automatically.",
+              "",
+              "The most useful things you can send instead:",
+              "- **Bug reports / rendering issues** → open an [Issue](../../issues).",
+              "- **Derivative work** → the MIT license lets you fork freely.",
+              "",
+              "See [CONTRIBUTING.md](../../blob/main/CONTRIBUTING.md). Thank you!",
+            ].join("\n");
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body,
+            });
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              state: "closed",
+            });
