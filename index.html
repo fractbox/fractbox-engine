@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Fractbox Engine — live demo</title>
+    <meta
+      name="description"
+      content="A build-less, dependency-free WebGPU engine that composes fractal primitives into a distance-estimated formula and renders it live."
+    />
+    <link rel="stylesheet" href="./demo.css" />
+  </head>
+  <body>
+    <canvas id="view"></canvas>
+    <!-- Text-mode render surface — used when neither WebGPU nor WebGL2 is
+         available (or with ?ascii=1): the engine's CPU backend traces the same
+         formulas into colored ASCII. Filled by startAsciiDemo (demo.js). The
+         inner <code> is load-bearing: the pre is a centering grid, and a frame
+         written straight into it would make every color-run <span> its own
+         grid item (a one-column glyph sliver) instead of inline text. -->
+    <pre id="asciiview" hidden><code id="asciiframe"></code></pre>
+
+    <header id="title">
+      <h1>Fractbox <span>Engine</span></h1>
+      <p>
+        A composable, distance-estimated fractal engine — WebGPU, zero build, zero
+        dependencies. Drag to orbit · scroll to zoom.
+      </p>
+    </header>
+
+    <button id="tour-btn" class="tour-btn" hidden type="button">▶ Guided tour</button>
+
+    <nav id="presets" aria-label="Preset gallery"></nav>
+
+    <footer id="meta">
+      <a href="https://github.com/fractbox/fractbox-engine">source on GitHub →</a>
+      <span id="fps"></span>
+    </footer>
+
+    <div id="nogpu" hidden>
+      <h2>No GPU — rendering in ASCII</h2>
+      <p>
+        Neither WebGPU nor WebGL2 is available here, so you're seeing the
+        engine's CPU backend: the same distance-estimated formulas, traced into
+        colored text (<code>core/cpu.js</code>). On a WebGPU-capable browser
+        (recent Chrome or Edge) this page renders on the GPU instead.
+      </p>
+    </div>
+
+    <script type="module" src="./demo.js"></script>
+  </body>
+</html>
